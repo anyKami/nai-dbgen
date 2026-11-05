@@ -251,6 +251,7 @@ export function createField(opts) {
  * @param {string} opts.label
  * @param {string} [opts.value]
  * @param {string} [opts.placeholder]
+ * @param {string} [opts.hint]
  * @param {number} [opts.rows]
  * @param {(v: string) => void} [opts.onChange]
  * @returns {{ el: HTMLElement, getValue: () => string, setValue: (v: string) => void, destroy: () => void }}
@@ -266,6 +267,12 @@ export function createTextarea(opts) {
     if (opts?.placeholder != null) {
         input.placeholder = String(opts.placeholder);
     }
+    const hint = opts?.hint != null && String(opts.hint)
+        ? el('small', 'nd-field-hint')
+        : null;
+    if (hint) {
+        setText(hint, String(opts.hint));
+    }
 
     /** @type {(v: string) => void} */
     const onChange = typeof opts?.onChange === 'function' ? opts.onChange : () => {};
@@ -273,6 +280,9 @@ export function createTextarea(opts) {
     input.addEventListener('input', handler);
 
     root.append(labelEl, input);
+    if (hint) {
+        root.append(hint);
+    }
     return {
         el: root,
         getValue: () => input.value,

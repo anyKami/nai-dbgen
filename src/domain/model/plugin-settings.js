@@ -16,6 +16,10 @@ import {
     defaultNaiParams,
     validateNaiParams,
 } from './nai-params.js';
+import {
+    DEFAULT_CONTEXT_BODY_PATTERN,
+    normalizeContextBodyPattern,
+} from '../blocks/context-body.js';
 
 /** @type {number} */
 export const PLUGIN_SETTINGS_SCHEMA_VERSION = 1;
@@ -52,6 +56,8 @@ export const PLUGIN_SETTINGS_SCHEMA_VERSION = 1;
  *   单图生图预设 id（需求 4.16 kind=single-imagegen）。null = 尚未选择。
  * @property {number} contextWindowSize
  *   「当前上下文」取最近几条 AI 回复楼（需求 4.6）。默认 5。
+ * @property {string} contextBodyPattern
+ *   从楼层原文抽出正文的正则。默认只留 <content> 内部。空字符串表示整楼都要。
  * @property {number} imageCacheLimit
  *   浏览器楼层图缓存张数上限（需求 4.17）。默认 500；整数 ≥1。没改过不写进扩展设置。
  * @property {number} floorImageScale
@@ -93,6 +99,7 @@ export function defaultPluginSettings() {
         activeSingleRecallPresetId: null,
         activeSingleImagegenPresetId: null,
         contextWindowSize: 5,
+        contextBodyPattern: DEFAULT_CONTEXT_BODY_PATTERN,
         imageCacheLimit: 500,
         floorImageScale: 100,
         autoWriteSlots: false,
@@ -163,6 +170,11 @@ export function normalizePluginSettings(obj) {
         contextWindowSize: isIntInRange(obj.contextWindowSize, 1, 100)
             ? Number(obj.contextWindowSize)
             : base.contextWindowSize,
+        contextBodyPattern: normalizeContextBodyPattern(
+            Object.prototype.hasOwnProperty.call(obj, 'contextBodyPattern')
+                ? obj.contextBodyPattern
+                : DEFAULT_CONTEXT_BODY_PATTERN,
+        ),
         imageCacheLimit: isIntInRange(obj.imageCacheLimit, 1, Number.MAX_SAFE_INTEGER)
             ? Number(obj.imageCacheLimit)
             : base.imageCacheLimit,

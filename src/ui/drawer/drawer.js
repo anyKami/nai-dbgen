@@ -8,7 +8,8 @@
  * - 管理台关闭（dialog close 捕获）与 repos.onChanged 也会触发 refresh
  */
 
-import { createNumberField, createToggle, createButton, createFieldGroup } from '../common/controls.js';
+import { createNumberField, createTextarea, createToggle, createButton, createFieldGroup } from '../common/controls.js';
+import { CONTEXT_BODY_PATTERN_HINT, normalizeContextBodyPattern } from '../../domain/blocks/context-body.js';
 import { mountCurrentPicker } from '../common/current-picker.js';
 import { safeImageUrl } from '../common/safe-url.js';
 import { mergePluginSettings } from '../../domain/model/plugin-settings.js';
@@ -98,6 +99,19 @@ export function mountDrawer(root, deps) {
         max: 100,
         step: 1,
         onChange: (v) => patch({ contextWindowSize: v }),
+    });
+    const contextBodyPattern = createTextarea({
+        label: '上下文正文正则',
+        hint: CONTEXT_BODY_PATTERN_HINT,
+        value: current.contextBodyPattern ?? '',
+        rows: 2,
+        onChange: (v) => {
+            const next = String(v ?? '');
+            if (next.trim() !== '' && normalizeContextBodyPattern(next) !== next) {
+                return;
+            }
+            patch({ contextBodyPattern: next });
+        },
     });
     const autoWrite = createToggle({
         label: '自动生成提示词',
@@ -331,7 +345,7 @@ export function mountDrawer(root, deps) {
 
     const group = createFieldGroup({
         title: '高频开关',
-        children: [contextN.el, floorImageScale.el, autoWrite.el, autoRender.el, naiParallel.el, includeWorldInfo.el, includeWorldInfoCharacters.el, omitRecentSlots.el],
+        children: [contextN.el, contextBodyPattern.el, floorImageScale.el, autoWrite.el, autoRender.el, naiParallel.el, includeWorldInfo.el, includeWorldInfoCharacters.el, omitRecentSlots.el],
     });
 
     shell.append(title, group.el, pickers, openBtn);
@@ -413,6 +427,7 @@ export function mountDrawer(root, deps) {
             cleanups.length = 0;
             for (const h of pickerHandles) h.destroy();
             contextN.destroy();
+            contextBodyPattern.destroy();
             floorImageScale.destroy();
             autoWrite.destroy();
             autoRender.destroy();

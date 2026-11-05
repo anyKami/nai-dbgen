@@ -10,6 +10,7 @@ import { Ok, Err } from '../infra/result.js';
 import { configError, contractError } from '../infra/errors.js';
 import { createLogger } from '../infra/logger.js';
 import { createBlockSet, setBlock } from '../domain/blocks/block-set.js';
+import { extractContextBody } from '../domain/blocks/context-body.js';
 import { VARIABLE_NAMES } from '../domain/template/variable-map.js';
 import { renderPreset } from '../domain/template/preset-renderer.js';
 import { recordLatestGeneration, recordParseFailure } from './parse-debug-log.js';
@@ -202,7 +203,10 @@ export function createTagRecallService(deps) {
 
             let blocks = createBlockSet();
             blocks = setBlock(blocks, VARIABLE_NAMES.CONTEXT, String(input.contextText ?? ''));
-            blocks = setBlock(blocks, '最后一楼', String(input.targetFloorText ?? ''));
+            blocks = setBlock(blocks, '最后一楼', extractContextBody(
+                input.targetFloorText ?? '',
+                settings.contextBodyPattern,
+            ));
             blocks = setBlock(blocks, VARIABLE_NAMES.USER_DESC, String(input.userDesc ?? ''));
             blocks = setBlock(blocks, RECALL_CANDIDATE_KEYS_VAR, candidateLines.join('\n'));
 

@@ -8,6 +8,7 @@ import {
 } from '../../src/domain/blocks/block-set.js';
 import { formatCharacterBlock } from '../../src/domain/blocks/character.block.js';
 import { formatContextBlock } from '../../src/domain/blocks/context.block.js';
+import { extractContextBody } from '../../src/domain/blocks/context-body.js';
 import { formatTagBlock } from '../../src/domain/blocks/tag.block.js';
 import { formatWorldInfoBlock } from '../../src/domain/blocks/worldinfo.block.js';
 import {
@@ -81,6 +82,15 @@ describe('formatContextBlock', () => {
         ];
         assert.equal(formatContextBlock(msgs), 'one\n\ntwo');
         assert.equal(formatContextBlock(msgs, { includeNames: true }), 'A: one\n\nB: two');
+    });
+});
+
+describe('extractContextBody', () => {
+    it('uses a custom pattern and can be turned off', () => {
+        const text = '<thinking>草稿</thinking><story>留下</story>';
+        assert.equal(extractContextBody(text, '<story>([\\s\\S]*?)</story>'), '留下');
+        assert.equal(extractContextBody(text, ''), text);
+        assert.equal(extractContextBody('没有标签', '<story>([\\s\\S]*?)</story>'), '没有标签');
     });
 });
 

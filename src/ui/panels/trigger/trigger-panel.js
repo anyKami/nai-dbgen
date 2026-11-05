@@ -12,7 +12,9 @@ import {
     createDetails,
     createButton,
     createInlineError,
+    createTextarea,
 } from '../../common/controls.js';
+import { CONTEXT_BODY_PATTERN_HINT, normalizeContextBodyPattern } from '../../../domain/blocks/context-body.js';
 import { createNaiParamsForm } from '../../common/nai-params-form.js';
 import { defaultNaiParams } from '../../../domain/model/nai-params.js';
 import { pickAllowedSettingsPatch, applyFormFields } from '../_lib/library-logic.js';
@@ -43,6 +45,12 @@ export function mountTriggerPanel(root, deps) {
         min: 1,
         max: 100,
         step: 1,
+    });
+    const contextBodyPattern = createTextarea({
+        label: '上下文正文正则',
+        hint: CONTEXT_BODY_PATTERN_HINT,
+        value: current.contextBodyPattern ?? '',
+        rows: 2,
     });
     const autoWrite = createToggle({
         label: '自动生成提示词',
@@ -100,7 +108,7 @@ export function mountTriggerPanel(root, deps) {
 
     const basic = createFieldGroup({
         title: '运行开关',
-        children: [contextN.el, floorImageScale.el, autoWrite.el, autoRender.el, naiParallel.el, includeWorldInfo.el, includeWorldInfoCharacters.el, omitRecentSlots.el, caseSensitive.el, wholeWords.el],
+        children: [contextN.el, contextBodyPattern.el, floorImageScale.el, autoWrite.el, autoRender.el, naiParallel.el, includeWorldInfo.el, includeWorldInfoCharacters.el, omitRecentSlots.el, caseSensitive.el, wholeWords.el],
     });
     const naiGroup = createDetails({
         summary: '出图参数',
@@ -114,8 +122,14 @@ export function mountTriggerPanel(root, deps) {
         onClick: () => {
             err.clear();
             const notices = paramsForm.consumeNotices();
+            let bodyPattern = contextBodyPattern.getValue();
+            if (bodyPattern.trim() !== '' && normalizeContextBodyPattern(bodyPattern) !== bodyPattern) {
+                toast(host, 'warning', '正文正则写错了，这项仍用上次保存的');
+                bodyPattern = settings.load().contextBodyPattern;
+            }
             const patch = pickAllowedSettingsPatch({
                 contextWindowSize: contextN.getValue(),
+                contextBodyPattern: bodyPattern,
                 floorImageScale: floorImageScale.getValue(),
                 autoWriteSlots: autoWrite.getValue(),
                 autoRenderSlots: autoRender.getValue(),
@@ -147,6 +161,7 @@ export function mountTriggerPanel(root, deps) {
             destroyed = true;
             err.destroy();
             contextN.destroy();
+            contextBodyPattern.destroy();
             floorImageScale.destroy();
             autoWrite.destroy();
             autoRender.destroy();

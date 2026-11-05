@@ -8,6 +8,7 @@
 
 import { stripSlotTokens } from '../domain/slot/slot-token.js';
 import { formatContextBlock } from '../domain/blocks/context.block.js';
+import { extractContextBody } from '../domain/blocks/context-body.js';
 
 /**
  * @typedef {import('../domain/model/plugin-settings.js').PluginSettings} PluginSettings
@@ -56,9 +57,10 @@ export function createContextCollector(deps) {
             }
 
             /** @type {import('../ports/host.port.js').HostMessage[]} */
+            const pattern = settings.contextBodyPattern;
             const messages = raw.map((m) => ({
                 ...m,
-                text: stripSlotTokens(m?.text ?? ''),
+                text: extractContextBody(stripSlotTokens(m?.text ?? ''), pattern),
             }));
             // messages 保持新→旧，世界书扫描要最新楼在前。
             // 写进「当前上下文」的正文按时间从早到晚，最新楼在最后。

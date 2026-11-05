@@ -57,6 +57,48 @@ describe('context-collector viewpoint', () => {
         assert.equal(win.messages.length, 1);
         assert.equal(win.messages[0].text, 'a');
     });
+
+    it('keeps every content block and drops the thinking draft', () => {
+        const host = createFakeHost({
+            aiMessages: [{
+                messageId: 3,
+                name: 'B',
+                text: [
+                    '<thinking>草稿里提到路人甲</thinking>',
+                    '<content>林晚晚走进教室。</content>',
+                    '<note>旁注</note>',
+                    '<content>苏糖已经在座位上。</content>',
+                ].join('\n'),
+                isUser: false,
+                isSystem: false,
+            }],
+        });
+        const collector = createContextCollector({
+            host,
+            loadSettings: () => baseSettings(),
+        });
+        const win = collector.collect();
+        assert.equal(win.messages[0].text, '林晚晚走进教室。\n苏糖已经在座位上。');
+        assert.equal(win.text, '林晚晚走进教室。\n苏糖已经在座位上。');
+        assert.equal(win.text.includes('路人甲'), false);
+    });
+
+    it('keeps the whole floor when it has no content tag', () => {
+        const host = createFakeHost({
+            aiMessages: [{
+                messageId: 3,
+                name: 'B',
+                text: '普通回复，没有正文标签。',
+                isUser: false,
+                isSystem: false,
+            }],
+        });
+        const collector = createContextCollector({
+            host,
+            loadSettings: () => baseSettings(),
+        });
+        assert.equal(collector.collect().text, '普通回复，没有正文标签。');
+    });
 });
 
 describe('viewpoint-blocks', () => {

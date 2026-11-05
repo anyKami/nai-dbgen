@@ -272,6 +272,7 @@ describe('model/plugin-settings', () => {
     it('defaults matchDefaults; validate; merge drops unknown keys', () => {
         const d = defaultPluginSettings();
         assert.equal(d.contextWindowSize, 5);
+        assert.equal(d.contextBodyPattern, '<content>([\\s\\S]*?)</content>');
         assert.equal(d.imageCacheLimit, 500);
         assert.equal(d.floorImageScale, 100);
         assert.equal(d.matchDefaults.caseSensitive, false);
@@ -288,6 +289,7 @@ describe('model/plugin-settings', () => {
 
         const merged = mergePluginSettings(d, {
             contextWindowSize: 8,
+            contextBodyPattern: '',
             imageCacheLimit: 3,
             unknownKey: 'drop',
             matchDefaults: { caseSensitive: true },
@@ -298,6 +300,11 @@ describe('model/plugin-settings', () => {
             activeSingleImagegenPresetId: 'si-1',
         });
         assert.equal(merged.contextWindowSize, 8);
+        assert.equal(merged.contextBodyPattern, '');
+        assert.equal(
+            mergePluginSettings(d, { contextBodyPattern: '(未闭合' }).contextBodyPattern,
+            d.contextBodyPattern,
+        );
         assert.equal(merged.imageCacheLimit, 3);
         assert.equal(merged.matchDefaults.caseSensitive, true);
         assert.equal(merged.includeWorldInfo, false);

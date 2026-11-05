@@ -22,6 +22,7 @@ export const PLUGIN_SETTINGS_KEYS = Object.freeze([
     'activeSingleRecallPresetId',
     'activeSingleImagegenPresetId',
     'contextWindowSize',
+    'contextBodyPattern',
     'imageCacheLimit',
     'floorImageScale',
     'autoWriteSlots',
