@@ -278,6 +278,7 @@ describe('model/plugin-settings', () => {
         assert.equal(d.autoWriteSlots, false);
         assert.equal(d.hideFloatingBall, false);
         assert.equal(d.includeWorldInfo, false);
+        assert.equal(d.includeWorldInfoCharacters, false);
         assert.equal(d.omitRecentSlots, false);
         assert.equal(d.activeSingleRecallPresetId, null);
         assert.equal(d.activeSingleImagegenPresetId, null);
@@ -291,6 +292,7 @@ describe('model/plugin-settings', () => {
             unknownKey: 'drop',
             matchDefaults: { caseSensitive: true },
             includeWorldInfo: true,
+            includeWorldInfoCharacters: true,
             omitRecentSlots: true,
             activeSingleRecallPresetId: 'sr-1',
             activeSingleImagegenPresetId: 'si-1',
@@ -298,7 +300,8 @@ describe('model/plugin-settings', () => {
         assert.equal(merged.contextWindowSize, 8);
         assert.equal(merged.imageCacheLimit, 3);
         assert.equal(merged.matchDefaults.caseSensitive, true);
-        assert.equal(merged.includeWorldInfo, true);
+        assert.equal(merged.includeWorldInfo, false);
+        assert.equal(merged.includeWorldInfoCharacters, true);
         assert.equal(merged.omitRecentSlots, true);
         assert.equal(merged.activeSingleRecallPresetId, 'sr-1');
         assert.equal(merged.activeSingleImagegenPresetId, 'si-1');

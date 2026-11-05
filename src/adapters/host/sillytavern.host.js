@@ -606,6 +606,42 @@ export function createSillyTavernHost(deps) {
             };
         },
 
+        async listEnabledWorldInfoEntries() {
+            try {
+                const url = resolveStPublicModuleUrl('scripts/world-info.js');
+                const mod = await import(url);
+                if (typeof mod.getSortedEntries !== 'function') {
+                    return Err(hostError({
+                        code: 'WORLDINFO_ENTRIES_UNAVAILABLE',
+                        message: '读不到世界书条目',
+                        hint: '将按空世界书继续',
+                    }));
+                }
+                const entries = await mod.getSortedEntries();
+                /** @type {Array<{ name: string, content: string }>} */
+                const rows = [];
+                for (const entry of Array.isArray(entries) ? entries : []) {
+                    if (!entry || entry.disable === true) {
+                        continue;
+                    }
+                    const name = typeof entry.comment === 'string' ? entry.comment.trim() : '';
+                    const content = typeof entry.content === 'string' ? entry.content.trim() : '';
+                    if (!content) {
+                        continue;
+                    }
+                    rows.push({ name, content });
+                }
+                return Ok(rows);
+            } catch (cause) {
+                return Err(hostError({
+                    code: 'WORLDINFO_ENTRIES_UNAVAILABLE',
+                    message: '读不到世界书条目',
+                    hint: '将按空世界书继续',
+                    cause,
+                }));
+            }
+        },
+
         async resolveWorldInfo(args) {
             try {
                 const contextWindow = Array.isArray(args?.contextWindow) ? args.contextWindow : [];

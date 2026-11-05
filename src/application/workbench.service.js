@@ -74,6 +74,7 @@ async function writeFloorPrompt(deps, input, traceId) {
         messageId: input?.messageId,
         signal: input.signal,
         traceId,
+        worldInfoKeywords: input?.worldInfoKeywords,
     });
     if (!vpR.ok) {
         return attachTraceId(vpR, traceId);
@@ -369,6 +370,7 @@ async function writeFloorPrompt(deps, input, traceId) {
  * @property {string} [traceId]
  * @property {string} [imageDataUrl] 反推时附上的参考图。没有则只按自然语言写提示词
  * @property {boolean} [skipRecall] 为 true 时不跑召回，构图标签留空。缺省照旧先召回
+ * @property {string[]} [worldInfoKeywords] 外部接口传入的本楼角色名。「传入世界书角色」打开时才用来对条目标题
  */
 
 /**

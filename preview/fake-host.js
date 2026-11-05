@@ -403,6 +403,10 @@ export function createFakeHost(opts = {}) {
             };
         },
 
+        async listEnabledWorldInfoEntries() {
+            return Ok([]);
+        },
+
         async resolveWorldInfo({ contextWindow, messageId }) {
             if (worldInfoFail) {
                 return Err(hostError({

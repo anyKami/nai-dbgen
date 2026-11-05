@@ -178,6 +178,58 @@ describe('viewpoint-blocks', () => {
         assert.match(r.value.characterText, /Alice/);
     });
 
+    it('character world info keeps enabled entries whose title contains a keyword', async () => {
+        const host = createFakeHost({
+            aiMessages: [{
+                messageId: 2,
+                name: 'Bot',
+                text: 'scene',
+                isUser: false,
+                isSystem: false,
+            }],
+            worldInfoText: 'SCAN_SHOULD_NOT_PASS',
+        });
+        host.listEnabledWorldInfoEntries = async () => Ok([
+            { name: '林晚晚-角色', content: '晚晚设定' },
+            { name: '苏糖', content: '苏糖设定' },
+            { name: '', content: '没标题' },
+            { name: '路人', content: '' },
+        ]);
+        const builder = createViewpointBlocksBuilder(buildDeps({
+            host,
+            settings: baseSettings({
+                includeWorldInfo: true,
+                includeWorldInfoCharacters: true,
+            }),
+        }));
+        const r = await builder.build({ worldInfoKeywords: [' 林晚晚 ', '', '糖'] });
+        assert.equal(isOk(r), true, r.ok ? '' : r.error?.message);
+        assert.equal(r.value.worldInfoText, '晚晚设定\n苏糖设定');
+        assert.equal(host.resolveWorldInfoCalls.length, 0);
+    });
+
+    it('character world info with no keyword match stays empty', async () => {
+        const host = createFakeHost({
+            aiMessages: [{
+                messageId: 2,
+                name: 'Bot',
+                text: 'scene',
+                isUser: false,
+                isSystem: false,
+            }],
+        });
+        host.listEnabledWorldInfoEntries = async () => Ok([
+            { name: '林晚晚', content: '设定' },
+        ]);
+        const builder = createViewpointBlocksBuilder(buildDeps({
+            host,
+            settings: baseSettings({ includeWorldInfoCharacters: true }),
+        }));
+        const r = await builder.build({ worldInfoKeywords: [] });
+        assert.equal(isOk(r), true, r.ok ? '' : r.error?.message);
+        assert.equal(r.value.worldInfoText, '');
+    });
+
     it('active constant libs inject all entries in list / save order; inactive omitted', async () => {
         const builder = createViewpointBlocksBuilder(buildDeps({
             tagRepo: {

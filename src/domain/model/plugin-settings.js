@@ -63,8 +63,11 @@ export const PLUGIN_SETTINGS_SCHEMA_VERSION = 1;
  * @property {boolean} naiParallel 同时请求多张。默认关，一张完成再请求下一张。
  * @property {boolean} hideFloatingBall 隐藏悬浮球。默认关。快捷回复栏仍可进配置和本楼生图。
  * @property {boolean} includeWorldInfo
- *   楼内生图是否把世界书写入 {{世界书}}。默认关。关闭时不扫描世界书：
- *   接口写提示词和直接楼内生图都不传入。
+ *   楼内生图是否把酒馆扫描到的整段世界书写入 {{世界书}}。默认关。
+ *   与 includeWorldInfoCharacters 互斥：界面打开其中一个会关掉另一个。
+ * @property {boolean} includeWorldInfoCharacters
+ *   打开后，{{世界书}} 只放已开启、且条目标题完整包含调用方关键字的条目。
+ *   关键字由外部接口传入。没开这个开关时不看关键字。
  * @property {boolean} omitRecentSlots
  *   打开后不把近期生图记录写入 {{近期生图记录}}。默认关。
  *   打开时接口写提示词和直接楼内生图都不读取、不发送这段记录。
@@ -97,6 +100,7 @@ export function defaultPluginSettings() {
         naiParallel: false,
         hideFloatingBall: false,
         includeWorldInfo: false,
+        includeWorldInfoCharacters: false,
         omitRecentSlots: false,
         matchDefaults: {
             caseSensitive: false,
@@ -169,7 +173,8 @@ export function normalizePluginSettings(obj) {
         autoRenderSlots: obj.autoRenderSlots === true,
         naiParallel: obj.naiParallel === true,
         hideFloatingBall: obj.hideFloatingBall === true,
-        includeWorldInfo: obj.includeWorldInfo === true,
+        includeWorldInfo: obj.includeWorldInfo === true && obj.includeWorldInfoCharacters !== true,
+        includeWorldInfoCharacters: obj.includeWorldInfoCharacters === true,
         omitRecentSlots: obj.omitRecentSlots === true,
         matchDefaults: normalizeMatchDefaults(obj.matchDefaults),
         naiParams: naiResult.ok ? naiResult.value : defaultNaiParams(),

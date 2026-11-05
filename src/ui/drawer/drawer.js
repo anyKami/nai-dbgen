@@ -127,9 +127,31 @@ export function mountDrawer(root, deps) {
     });
     const includeWorldInfo = createToggle({
         label: '传入世界书',
-        hint: '打开后，接口写提示词和直接楼内生图都会带上世界书',
+        hint: '打开后，接口写提示词和直接楼内生图带上酒馆扫描到的整段世界书',
         checked: current.includeWorldInfo === true,
-        onChange: (v) => patch({ includeWorldInfo: v }),
+        onChange: (v) => {
+            if (v) {
+                includeWorldInfoCharacters.setValue(false);
+            }
+            patch({
+                includeWorldInfo: v,
+                ...(v ? { includeWorldInfoCharacters: false } : {}),
+            });
+        },
+    });
+    const includeWorldInfoCharacters = createToggle({
+        label: '传入世界书角色',
+        hint: '打开后，只带上条目标题包含调用方关键字的已开启条目',
+        checked: current.includeWorldInfoCharacters === true,
+        onChange: (v) => {
+            if (v) {
+                includeWorldInfo.setValue(false);
+            }
+            patch({
+                includeWorldInfoCharacters: v,
+                ...(v ? { includeWorldInfo: false } : {}),
+            });
+        },
     });
     const omitRecentSlots = createToggle({
         label: '不发近期生图记录',
@@ -309,7 +331,7 @@ export function mountDrawer(root, deps) {
 
     const group = createFieldGroup({
         title: '高频开关',
-        children: [contextN.el, floorImageScale.el, autoWrite.el, autoRender.el, naiParallel.el, includeWorldInfo.el, omitRecentSlots.el],
+        children: [contextN.el, floorImageScale.el, autoWrite.el, autoRender.el, naiParallel.el, includeWorldInfo.el, includeWorldInfoCharacters.el, omitRecentSlots.el],
     });
 
     shell.append(title, group.el, pickers, openBtn);
@@ -396,6 +418,7 @@ export function mountDrawer(root, deps) {
             autoRender.destroy();
             naiParallel.destroy();
             includeWorldInfo.destroy();
+            includeWorldInfoCharacters.destroy();
             omitRecentSlots.destroy();
             group.destroy();
             shell.remove();

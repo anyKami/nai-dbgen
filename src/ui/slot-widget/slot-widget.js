@@ -188,6 +188,57 @@ function currentFrameHeight(frame) {
 }
 
 /**
+ * 代码块白底和盖在 iframe 上的兄弟节点会挡住生图按钮。
+ * 白底改透明，盖住的节点不再接点击，iframe 和里面的按钮继续可点。
+ * @param {HTMLElement} frame
+ */
+function clearSlotFrameChrome(frame) {
+    if (!frame?.style?.setProperty) {
+        return;
+    }
+    frame.style.setProperty('border', '0', 'important');
+    frame.style.setProperty('background', 'transparent', 'important');
+    frame.style.setProperty('background-color', 'transparent', 'important');
+    frame.style.setProperty('display', 'block', 'important');
+    frame.style.setProperty('overflow', 'hidden', 'important');
+    frame.style.setProperty('pointer-events', 'auto', 'important');
+    frame.style.setProperty('position', 'relative', 'important');
+    frame.style.setProperty('z-index', '2', 'important');
+    frame.setAttribute('scrolling', 'no');
+    const parent = frame.parentElement;
+    if (parent) {
+        const kids = parent.children || [];
+        for (const child of kids) {
+            if (child === frame || !child.style?.setProperty) {
+                continue;
+            }
+            child.style.setProperty('pointer-events', 'none', 'important');
+            child.style.setProperty('background', 'transparent', 'important');
+            child.style.setProperty('background-color', 'transparent', 'important');
+        }
+    }
+    let node = parent;
+    for (let depth = 0; node && depth < 5; depth += 1) {
+        const tag = String(node.tagName || '');
+        const cls = String(node.className || '');
+        if (tag === 'PRE' || tag === 'CODE' || /hljs|render|code/i.test(cls)) {
+            node.style.setProperty('background', 'transparent', 'important');
+            node.style.setProperty('background-color', 'transparent', 'important');
+            node.style.setProperty('box-shadow', 'none', 'important');
+            if (tag === 'PRE' || tag === 'CODE') {
+                node.style.setProperty('padding', '0', 'important');
+                node.style.setProperty('pointer-events', 'none', 'important');
+            }
+        }
+        if (/mes_text|mes_block/.test(cls)) {
+            break;
+        }
+        node = node.parentElement;
+    }
+    frame.style.setProperty('pointer-events', 'auto', 'important');
+}
+
+/**
  * 按按钮这一块的实际高度收 iframe。
  * 不能用 body.scrollHeight：第一次渲染时正文被撑满整框，量出来的就是空行本身。
  * 高度已经对上就立刻停，避免和宿主互相改高度。
@@ -209,6 +260,16 @@ function fitHostFrameNow(rootEl) {
             html.style.background = 'transparent';
             html.style.setProperty('overflow', 'hidden', 'important');
         }
+        rootEl.style.setProperty('background', 'transparent', 'important');
+        const liveBtn = typeof rootEl.querySelector === 'function'
+            ? rootEl.querySelector('button')
+            : null;
+        if (liveBtn?.style?.setProperty) {
+            liveBtn.style.setProperty('pointer-events', 'auto', 'important');
+            liveBtn.style.setProperty('position', 'relative', 'important');
+            liveBtn.style.setProperty('z-index', '3', 'important');
+        }
+        clearSlotFrameChrome(frame);
         if (body) {
             body.style.margin = '0';
             body.style.height = 'auto';
@@ -239,22 +300,6 @@ function fitHostFrameNow(rootEl) {
         rootEl.__ndFitWrites = writes + 1;
         frame.style.height = `${height}px`;
         frame.style.minHeight = '0';
-        if (!frame.__ndFrameChrome) {
-            frame.__ndFrameChrome = true;
-            frame.style.setProperty('border', '0', 'important');
-            frame.style.setProperty('background', 'transparent', 'important');
-            frame.style.setProperty('display', 'block', 'important');
-            frame.style.setProperty('overflow', 'hidden', 'important');
-            frame.setAttribute('scrolling', 'no');
-            const parent = frame.parentElement;
-            const parentClass = String(parent?.className || '');
-            if (parent && !/mes_text|mes_block/.test(parentClass)) {
-                parent.style.setProperty('min-height', '0', 'important');
-                parent.style.setProperty('padding', '0', 'important');
-                parent.style.setProperty('border', '0', 'important');
-                parent.style.setProperty('background', 'transparent', 'important');
-            }
-        }
     } finally {
         rootEl.__ndFitting = false;
     }

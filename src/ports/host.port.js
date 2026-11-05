@@ -77,6 +77,10 @@ import { requireArg } from '../infra/validate.js';
  *   messageId 仅用于日志与 trace。「是否带发言人名」由适配器读酒馆
  *   world_info_include_names 决定，不上浮到 application。失败可降级为空串（HostError）。基线 §6。
  *
+ * @property {() => Promise<import('../infra/result.js').Ok<Array<{ name: string, content: string }>>|import('../infra/result.js').Err<import('../infra/errors.js').AppError>>} listEnabledWorldInfoEntries
+ *   当前启用世界书里、条目本身也开着、且有正文的条目。name 是条目标题（comment）。
+ *   顺序与酒馆 getSortedEntries 一致。失败可降级为空列表。
+ *
  * @property {(fn: (chatId: ChatId|null) => void) => Unsubscribe} onChatChanged
  *
  * @property {(fn: (chatFileName: string) => void) => Unsubscribe} onChatDeleted
@@ -131,6 +135,7 @@ const REQUIRED_METHODS = Object.freeze([
     'onMessageDomReady',
     'registerOutboundTransform',
     'resolveWorldInfo',
+    'listEnabledWorldInfoEntries',
     'onChatChanged',
     'onChatDeleted',
     'onGroupChatDeleted',

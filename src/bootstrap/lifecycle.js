@@ -257,7 +257,7 @@ function exposePublicApi(container) {
         /**
          * 对外写提示词：当前楼的召回预设和生图预设。用户输入只替换 {{用户描述}}。
          * 算工作台调用：工作台专用段会带上。模型回了多份就全部放在 captions 里，caption 仍是第一份。召回到的生成点按 slotId 写在 captions[].anchorSentence 上，没有则不带。不出图、不写 slot。
-         * @param {{ description: string, messageId?: number, signal?: AbortSignal, skipRecall?: boolean }} req
+         * @param {{ description: string, messageId?: number, signal?: AbortSignal, skipRecall?: boolean, worldInfoKeywords?: string[] }} req
          */
         async generateSinglePrompt(req) {
             const c = liveContainer();
@@ -274,6 +274,7 @@ function exposePublicApi(container) {
                 ...(req.skipRecall === true && { skipRecall: true }),
                 messageId: req.messageId,
                 signal: req.signal,
+                worldInfoKeywords: req.worldInfoKeywords,
             });
         },
         async getActiveArtist() {

@@ -16,6 +16,8 @@ import {
     collectConstantEntries,
     formatConstantBlock,
 } from '../domain/blocks/constant.block.js';
+import { formatWorldInfoBlock } from '../domain/blocks/worldinfo.block.js';
+import { selectWorldInfoByEntryName } from '../domain/blocks/worldinfo-characters.js';
 import {
     abortErrIfNeeded,
     attachTraceId,
@@ -44,6 +46,7 @@ import {
  * @property {string} [extraScanText] 追加到关键字扫描文本（如单图用户描述）
  * @property {AbortSignal} [signal]
  * @property {string} [traceId]
+ * @property {string[]} [worldInfoKeywords] 「传入世界书角色」用的条目标题关键字
  */
 
 /**
@@ -93,9 +96,11 @@ export function createViewpointBlocksBuilder(deps) {
             const contextWindow = window.messages;
             const contextText = window.text;
 
-            // ── 2. 世界书：开关关闭时不扫描、不传入（接口与直接楼内生图共用）──
+            // ── 2. 世界书：两个开关互斥，开哪个走哪种，都不开就留空 ──
             let worldInfoText = '';
-            if (settings.includeWorldInfo === true) {
+            if (settings.includeWorldInfoCharacters === true) {
+                worldInfoText = await resolveCharacterWorldInfo(deps.host, opts.worldInfoKeywords);
+            } else if (settings.includeWorldInfo === true) {
                 const wiR = await deps.worldInfoResolver.resolve({
                     contextWindow,
                     messageId,
@@ -182,6 +187,23 @@ export function createViewpointBlocksBuilder(deps) {
             });
         },
     };
+}
+
+/**
+ * 「传入世界书角色」：只拼接标题包含关键字的已开启条目。读不到条目时留空。
+ * @param {import('../ports/host.port.js').HostPort} host
+ * @param {unknown} keywords
+ * @returns {Promise<string>}
+ */
+async function resolveCharacterWorldInfo(host, keywords) {
+    if (!host || typeof host.listEnabledWorldInfoEntries !== 'function') {
+        return '';
+    }
+    const listed = await host.listEnabledWorldInfoEntries();
+    if (!listed?.ok) {
+        return '';
+    }
+    return formatWorldInfoBlock(selectWorldInfoByEntryName(listed.value, keywords));
 }
 
 /**

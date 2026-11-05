@@ -68,8 +68,19 @@ export function mountTriggerPanel(root, deps) {
     });
     const includeWorldInfo = createToggle({
         label: '传入世界书',
-        hint: '打开后，接口写提示词和直接楼内生图都会带上世界书',
+        hint: '打开后，接口写提示词和直接楼内生图带上酒馆扫描到的整段世界书',
         checked: current.includeWorldInfo === true,
+        onChange: (v) => {
+            if (v) includeWorldInfoCharacters.setValue(false);
+        },
+    });
+    const includeWorldInfoCharacters = createToggle({
+        label: '传入世界书角色',
+        hint: '打开后，只带上条目标题包含调用方关键字的已开启条目',
+        checked: current.includeWorldInfoCharacters === true,
+        onChange: (v) => {
+            if (v) includeWorldInfo.setValue(false);
+        },
     });
     const omitRecentSlots = createToggle({
         label: '不发近期生图记录',
@@ -89,7 +100,7 @@ export function mountTriggerPanel(root, deps) {
 
     const basic = createFieldGroup({
         title: '运行开关',
-        children: [contextN.el, floorImageScale.el, autoWrite.el, autoRender.el, naiParallel.el, includeWorldInfo.el, omitRecentSlots.el, caseSensitive.el, wholeWords.el],
+        children: [contextN.el, floorImageScale.el, autoWrite.el, autoRender.el, naiParallel.el, includeWorldInfo.el, includeWorldInfoCharacters.el, omitRecentSlots.el, caseSensitive.el, wholeWords.el],
     });
     const naiGroup = createDetails({
         summary: '出图参数',
@@ -110,6 +121,7 @@ export function mountTriggerPanel(root, deps) {
                 autoRenderSlots: autoRender.getValue(),
                 naiParallel: naiParallel.getValue(),
                 includeWorldInfo: includeWorldInfo.getValue(),
+                includeWorldInfoCharacters: includeWorldInfoCharacters.getValue(),
                 omitRecentSlots: omitRecentSlots.getValue(),
                 matchDefaults: {
                     caseSensitive: caseSensitive.getValue(),
@@ -140,6 +152,7 @@ export function mountTriggerPanel(root, deps) {
             autoRender.destroy();
             naiParallel.destroy();
             includeWorldInfo.destroy();
+            includeWorldInfoCharacters.destroy();
             omitRecentSlots.destroy();
             caseSensitive.destroy();
             wholeWords.destroy();
