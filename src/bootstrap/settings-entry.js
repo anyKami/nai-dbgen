@@ -1,5 +1,5 @@
 /**
- * 扩展程序列表入口。折叠行为与外观交给酒馆的 inline-drawer。
+ * 扩展程序列表入口。折叠行为交给酒馆，触控尺寸由 settings-entry.css 提供。
  */
 
 /**
@@ -16,7 +16,7 @@ export function mountSettingsEntry(deps) {
     }
 
     const root = document.createElement('div');
-    root.className = 'inline-drawer';
+    root.className = 'inline-drawer nd-settings-entry';
 
     const header = document.createElement('div');
     header.className = 'inline-drawer-toggle inline-drawer-header';
@@ -32,7 +32,7 @@ export function mountSettingsEntry(deps) {
     const content = document.createElement('div');
     content.className = 'inline-drawer-content';
     const actions = document.createElement('div');
-    actions.className = 'flex-container';
+    actions.className = 'nd-settings-entry__actions';
     content.appendChild(actions);
     root.append(header, content);
 
@@ -43,7 +43,7 @@ export function mountSettingsEntry(deps) {
     ]) {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'menu_button menu_button_icon';
+        button.className = 'menu_button menu_button_icon nd-settings-entry__button';
         button.title = `打开数据库生图${label}`;
         const glyph = document.createElement('i');
         glyph.className = `fa-solid ${icon}`;
