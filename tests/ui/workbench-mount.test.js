@@ -494,6 +494,29 @@ describe('ui/workbench mountWorkbench', () => {
         ctx2.handle.destroy();
     });
 
+    it('Medium locks incompatible controls, sends 14 steps, and unlocks on switching back', async () => {
+        const ctx = mount();
+        const field = (label) => Array.from(ctx.root.querySelectorAll('.nd-field'))
+            .find((node) => node.querySelector('.nd-field__label')?.textContent === label);
+        setSelectByLabel(ctx.root, '模型', 'NAI Diffusion V5 Full Medium');
+        assert.equal(field('步数').querySelector('input').value, '14');
+        assert.equal(field('步数').querySelector('input').disabled, true);
+        assert.equal(field('采样器').querySelector('select').disabled, true);
+        assert.equal(field('官方负面预设').querySelector('select').disabled, true);
+        assert.equal(field('CFG Rescale').hidden, true);
+        await clickButton(ctx.root, '出图');
+        await new Promise((r) => setTimeout(r, 0));
+        assert.equal(ctx.genCalls[0].params.model, 'nai-diffusion-5-full-medium');
+        assert.equal(ctx.genCalls[0].params.steps, 14);
+        assert.equal(ctx.genCalls[0].params.ucPreset, 0);
+        setSelectByLabel(ctx.root, '模型', 'nai-diffusion-5-full');
+        assert.equal(field('步数').querySelector('input').disabled, false);
+        assert.equal(field('采样器').querySelector('select').disabled, false);
+        assert.equal(field('官方负面预设').querySelector('select').disabled, false);
+        assert.equal(field('CFG Rescale').hidden, false);
+        ctx.handle.destroy();
+    });
+
     it('D47: Variety / 透明底经 readParams 透传给出图', async () => {
         const ctx = mount();
         // Variety：4.5 开关；值由程序按尺寸计算

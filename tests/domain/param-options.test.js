@@ -16,6 +16,7 @@ import {
     expandNaiParamFields,
     formatNaiModelInput,
     isKnownNaiModel,
+    isNaiMediumModel,
     resolveNaiModelInput,
     isMultipleOf64,
     matchSizePresetId,
@@ -24,6 +25,7 @@ import {
     officialUndesiredContent,
     noiseSchedulesForModel,
     reconcileParamsForModel,
+    samplersForModel,
     smeaFlagsFromMode,
     smeaModeFromFlags,
     supportsCfgRescale,
@@ -31,11 +33,98 @@ import {
     supportsSmea,
     supportsTransparentBackground,
     supportsVariety,
+    ucPresetsForModel,
 } from '../../src/domain/nai/param-options.js';
 import { defaultNaiParams } from '../../src/domain/model/nai-params.js';
 import { assembleNaiPayload } from '../../src/domain/nai/payload-assembler.js';
 import { emptyNaiCaption } from '../../src/domain/model/nai-params.js';
 import { ERROR_CATEGORY } from '../../src/infra/errors.js';
+
+describe('V5 Medium', () => {
+    for (const model of ['nai-diffusion-5-full-medium', 'nai-diffusion-5-full-medium-inpainting']) {
+        it(`${model}: catalog and model switch enforce official constraints`, () => {
+            assert.ok(isKnownNaiModel(model));
+            assert.ok(isNaiMediumModel(model));
+            assert.equal(resolveNaiModelInput(formatNaiModelInput(model)), model);
+            assert.equal(classifyNaiModel(model), 'v5');
+            assert.equal(supportsCfgRescale(model), false);
+            assert.equal(supportsTransparentBackground(model), true);
+            assert.deepEqual(samplersForModel(model).map((o) => o.value), ['k_euler_ancestral']);
+            assert.deepEqual(ucPresetsForModel(model).map((o) => o.value), [0]);
+            const { params } = reconcileParamsForModel({
+                ...defaultNaiParams(), steps: 28, sampler: 'k_euler', ucPreset: 4,
+                cfg_rescale: 0.5, scale: 7, noise_schedule: 'native',
+            }, model);
+            assert.equal(params.steps, 14);
+            assert.equal(params.sampler, 'k_euler_ancestral');
+            assert.equal(params.ucPreset, 0);
+            assert.equal(params.tag_hint_uc_preset, true);
+            assert.equal(params.cfg_rescale, 0);
+            assert.equal(params.noise_schedule, 'karras');
+            assert.equal(params.scale, 7);
+            assert.equal(isNaiMediumModel('nai-diffusion-5-full'), false);
+            assert.equal(isNaiMediumModel('nai-diffusion-5-curated'), false);
+        });
+
+        it(`${model}: inherited parameters fall back; invalid explicit overrides fail`, () => {
+            const base = { ...defaultNaiParams(), sampler: 'k_euler', ucPreset: 4, cfg_rescale: 0.3 };
+            const inherited = mergeNaiParamsForGenerate(base, { model });
+            assert.equal(inherited.ok, true);
+            assert.equal(inherited.value.params.steps, 14);
+            assert.equal(inherited.value.params.sampler, 'k_euler_ancestral');
+            assert.equal(inherited.value.params.ucPreset, 0);
+            assert.equal(inherited.value.params.cfg_rescale, 0);
+            for (const [field, value] of [
+                ['steps', 28], ['sampler', 'k_euler'], ['ucPreset', 4],
+                ['cfg_rescale', 0.3], ['tag_hint_uc_preset', false],
+            ]) {
+                const result = mergeNaiParamsForGenerate(base, { model, [field]: value });
+                assert.equal(result.ok, false, field);
+                assert.equal(result.error.code, 'NAI_PARAMS_INVALID');
+                assert.equal(result.error.context.field, field);
+            }
+            assert.equal(mergeNaiParamsForGenerate(base, {
+                model, steps: 14, sampler: 'k_euler_ancestral', ucPreset: 0, cfg_rescale: 0,
+            }).ok, true);
+        });
+
+        it(`${model}: sends fixed UC only and preserves prompt drafts`, () => {
+            const caption = emptyNaiCaption();
+            caption.v4_prompt.caption.base_caption = 'a landscape, -3::hat::';
+            caption.v4_prompt.caption.char_captions = [{ char_caption: 'girl', centers: [{ x: 0.3, y: 0.5 }] }];
+            caption.v4_negative_prompt.caption.base_caption = 'CUSTOM_SCENE_NEG';
+            caption.v4_negative_prompt.caption.char_captions = [{ char_caption: 'CUSTOM_CHAR_NEG' }];
+            const artist = { positivePrompt: 'ARTIST_POS', negativePrompt: 'CUSTOM_ARTIST_NEG' };
+            const original = structuredClone({ caption, artist });
+            const payload = assembleNaiPayload({
+                caption, artist, params: { ...defaultNaiParams(), model },
+                replaceCharacterKeywords: false,
+                paramOverrides: { steps: 28, sampler: 'k_euler', ucPreset: 4, cfg_rescale: 0.5 },
+            });
+            assert.equal(payload.model, model);
+            assert.equal(payload.parameters.steps, 14);
+            assert.equal(payload.parameters.sampler, 'k_euler_ancestral');
+            assert.equal(payload.parameters.cfg_rescale, 0);
+            assert.equal(payload.parameters.ucPreset, 0);
+            assert.equal(payload.negative_prompt, officialUndesiredContent(model, 0));
+            assert.equal(payload.parameters.negative_prompt, payload.negative_prompt);
+            assert.equal(payload.parameters.v4_negative_prompt.caption.base_caption, payload.negative_prompt);
+            assert.deepEqual(payload.parameters.v4_negative_prompt.caption.char_captions, [
+                { char_caption: '', centers: [{ x: 0.3, y: 0.5 }] },
+            ]);
+            assert.equal(JSON.stringify(payload).includes('CUSTOM_'), false);
+            assert.match(payload.input, /ARTIST_POS, a landscape, -3::hat::/);
+            assert.deepEqual(payload.parameters.v4_prompt.caption.char_captions, caption.v4_prompt.caption.char_captions);
+            assert.deepEqual({ caption, artist }, original);
+            const high = assembleNaiPayload({
+                caption, artist, params: { ...defaultNaiParams(), model: 'nai-diffusion-5-full' },
+                replaceCharacterKeywords: false,
+            });
+            assert.match(high.negative_prompt, /CUSTOM_ARTIST_NEG, CUSTOM_SCENE_NEG/);
+            assert.equal(high.parameters.v4_negative_prompt.caption.char_captions[0].char_caption, 'CUSTOM_CHAR_NEG');
+        });
+    }
+});
 
 describe('param-options catalog', () => {
     it('lists only V4+ models the assembler can shape', () => {

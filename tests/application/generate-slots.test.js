@@ -167,6 +167,23 @@ describe('generateSlots seven-step pipeline', () => {
 });
 
 describe('renderSlot + imageGen', () => {
+    it('Medium uses the selected model for floor rendering and rejects incompatible explicit steps before NAI', async () => {
+        const p = buildPipeline();
+        p.patchSettings({ naiParams: { ...p.loadSettings().naiParams, model: 'nai-diffusion-5-full-medium' } });
+        assert.equal((await p.generateSlots.execute(2)).ok, true);
+        assert.equal((await p.renderSlot.execute(2, 1)).ok, true);
+        assert.equal(p.naiCalls.length, 1);
+        assert.equal(p.naiCalls[0].payload.model, 'nai-diffusion-5-full-medium');
+        assert.equal(p.naiCalls[0].payload.parameters.steps, 14);
+        assert.equal(p.naiCalls[0].payload.negative_prompt.includes('ACTIVE_NEG'), false);
+        const invalid = await p.imageGen.generate({
+            caption: makeCaption('landscape'), replaceCharacterKeywords: false, params: { steps: 28 },
+        });
+        assert.equal(invalid.ok, false);
+        assert.equal(invalid.error.context.field, 'steps');
+        assert.equal(p.naiCalls.length, 1);
+    });
+
     it('renders with replaceCharacterKeywords=false always', async () => {
         const p = buildPipeline();
         const gen = await p.generateSlots.execute(2);

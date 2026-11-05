@@ -28,6 +28,7 @@ import { mountSlotWidget } from '../ui/slot-widget/slot-widget.js';
 import { openModal } from '../ui/common/modal.js';
 import { removeDeletedSlotElements } from '../ui/slot-editor/slot-editor.js';
 import { installQuickReplyEntry } from './quick-reply-entry.js';
+import { mountSettingsEntry } from './settings-entry.js';
 
 const log = createLogger('bootstrap/lifecycle');
 
@@ -380,6 +381,15 @@ async function openManagementUi(container, initialTab) {
     runtime.panelShell = await openPanelShell(panelDeps(container), initialTab);
 }
 
+/** @returns {void} */
+function openConfigUi() {
+    if (!liveContainer() || typeof runtime.floatingBallHandle?.openConfigPanel !== 'function') {
+        safeToast(null, 'warning', '酒馆数据库生图未成功加载');
+        return;
+    }
+    runtime.floatingBallHandle.openConfigPanel();
+}
+
 /**
  * @param {Awaited<ReturnType<typeof createContainer>>} container
  * @returns {Promise<void>}
@@ -513,11 +523,7 @@ function registerSlashCommands(host) {
         aliases: ['nai-config'],
         helpString: '打开配置面板，和单击悬浮球相同',
         callback: async () => {
-            if (typeof runtime.floatingBallHandle?.openConfigPanel !== 'function') {
-                safeToast(null, 'warning', '酒馆数据库生图未成功加载');
-                return '';
-            }
-            runtime.floatingBallHandle.openConfigPanel();
+            openConfigUi();
             return '';
         },
     });
@@ -1457,6 +1463,24 @@ export async function activate(opts = {}) {
         // 悬浮球：放在可能失败步骤之后；仍挂 rollback 防后续扩展踩坑
         mountFloatingBallUi();
         rollback.push(() => destroyFloatingBallUi());
+
+        runtime.drawerHandle = mountSettingsEntry({
+            host: container.host,
+            openWorkbench: () => {
+                const c = liveContainer();
+                if (!c) {
+                    safeToast(null, 'warning', '酒馆数据库生图未成功加载');
+                    return;
+                }
+                return openWorkbenchUi(c);
+            },
+            openConfig: openConfigUi,
+            onError: (error) => safeToast(liveContainer()?.host, 'error', formatUserMessage(error)),
+        });
+        rollback.push(() => {
+            runtime.drawerHandle?.destroy();
+            runtime.drawerHandle = null;
+        });
 
         // 图片缓存上限裁剪：启动后一次，不阻塞、失败只记日志
         const trimSvc = container.services?.imageCacheTrim;

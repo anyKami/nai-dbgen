@@ -22,15 +22,22 @@ import { domainError } from '../../infra/errors.js';
  * 文生图编号出处：docs.novelai.net 的 V5 Curated / V5 Full，以及既有 V4 / V4.5 编号。
  * 局部重绘：V5 发布说明只上了 V5 Full Inpainting，没有 V5 Curated Inpainting。
  * V4 / V4.5 的重绘编号与官方客户端一致。
+ * V5 Full Medium / Medium Inpainting：官方客户端 2026-11-05 模型表，限制见
+ * https://docs.novelai.net/en/image/effort/ 。
  *
  * @type {readonly NamedOption[]}
  */
 export const NAI_MODEL_OPTIONS = Object.freeze([
     Object.freeze({ value: 'nai-diffusion-5-curated', label: 'NAI Diffusion V5 Curated' }),
     Object.freeze({ value: 'nai-diffusion-5-full', label: 'NAI Diffusion V5 Full' }),
+    Object.freeze({ value: 'nai-diffusion-5-full-medium', label: 'NAI Diffusion V5 Full Medium' }),
     Object.freeze({
         value: 'nai-diffusion-5-full-inpainting',
         label: 'NAI Diffusion V5 Full Inpainting',
+    }),
+    Object.freeze({
+        value: 'nai-diffusion-5-full-medium-inpainting',
+        label: 'NAI Diffusion V5 Full Medium Inpainting',
     }),
     Object.freeze({ value: 'nai-diffusion-4-5-curated', label: 'NAI Diffusion V4.5 Curated' }),
     Object.freeze({ value: 'nai-diffusion-4-5-full', label: 'NAI Diffusion V4.5 Full' }),
@@ -59,6 +66,18 @@ export const NAI_MODEL_OPTIONS = Object.freeze([
 
 /** @type {ReadonlySet<string>} */
 const MODEL_ID_SET = new Set(NAI_MODEL_OPTIONS.map((o) => o.value));
+
+/** Medium 蒸馏模型的固定步数（官方 Effort Toggle 文档）。 */
+export const NAI_MEDIUM_STEPS = 14;
+
+/**
+ * @param {string} model
+ * @returns {boolean}
+ */
+export function isNaiMediumModel(model) {
+    return model === 'nai-diffusion-5-full-medium'
+        || model === 'nai-diffusion-5-full-medium-inpainting';
+}
 
 /**
  * 采样器。出处：`app/public/index.html` #sampler；与 ST `loadNovelSamplers` 重叠子集。
@@ -273,12 +292,12 @@ export function supportsVariety(model) {
 
 /**
  * CFG Rescale（Prompt Guidance Rescale，请求字段 cfg_rescale）。
- * 各模型都可带：0 是关闭，非 0 也原样发出，不再按模型归 0。
- * @param {string} _model
+ * Medium 不支持；其余模型 0 为关闭，非 0 原样发出。
+ * @param {string} model
  * @returns {boolean}
  */
-export function supportsCfgRescale(_model) {
-    return true;
+export function supportsCfgRescale(model) {
+    return !isNaiMediumModel(model);
 }
 
 /**
@@ -303,8 +322,8 @@ export function supportsTransparentBackground(model) {
  * @param {string} model
  * @returns {readonly NamedOption[]}
  */
-export function samplersForModel(_model) {
-    return NAI_SAMPLER_OPTIONS;
+export function samplersForModel(model) {
+    return isNaiMediumModel(model) ? NAI_SAMPLER_OPTIONS.slice(0, 1) : NAI_SAMPLER_OPTIONS;
 }
 
 /**
@@ -322,8 +341,8 @@ export function noiseSchedulesForModel(model) {
  * @param {string} model
  * @returns {readonly UcOption[]}
  */
-export function ucPresetsForModel(_model) {
-    return NAI_UC_PRESET_OPTIONS;
+export function ucPresetsForModel(model) {
+    return isNaiMediumModel(model) ? NAI_UC_PRESET_OPTIONS.slice(0, 1) : NAI_UC_PRESET_OPTIONS;
 }
 
 /**
@@ -402,6 +421,13 @@ export function reconcileParamsForModel(params, model) {
     if (!String(next.model || '').trim()) {
         notices.push(`未填写模型，已改为「${labelOfModel(defaults.model)}」`);
         next.model = defaults.model;
+    }
+
+    if (isNaiMediumModel(next.model)) {
+        if (next.steps !== NAI_MEDIUM_STEPS) {
+            notices.push(`Medium 固定使用 ${NAI_MEDIUM_STEPS} 步，已自动调整`);
+        }
+        next.steps = NAI_MEDIUM_STEPS;
     }
 
     const samplerOpts = samplersForModel(next.model);
@@ -589,6 +615,15 @@ export function mergeNaiParamsForGenerate(base, overrides) {
 
     // —— 官方负面预设 ——
     {
+        if (isNaiMediumModel(model) && has('tag_hint_uc_preset') && explicit.tag_hint_uc_preset === false) {
+            return Err(paramValidationError({
+                field: 'tag_hint_uc_preset',
+                value: false,
+                message: 'Medium 固定使用严格排除负面预设，不能关闭',
+                allowed: [true],
+                model,
+            }));
+        }
         const uc = has('ucPreset') ? Number(explicit.ucPreset) : next.ucPreset;
         const opts = ucPresetsForModel(model);
         if (!opts.some((o) => o.value === uc)) {
@@ -737,9 +772,25 @@ export function mergeNaiParamsForGenerate(base, overrides) {
         }
     }
 
-    // 其余显式键直接覆盖（质量词开关、步数等）
+    // —— 步数 ——
+    if (isNaiMediumModel(model)) {
+        if (has('steps') && Number(explicit.steps) !== NAI_MEDIUM_STEPS) {
+            return Err(paramValidationError({
+                field: 'steps',
+                value: explicit.steps,
+                message: `Medium 固定使用 ${NAI_MEDIUM_STEPS} 步`,
+                allowed: [NAI_MEDIUM_STEPS],
+                model,
+            }));
+        }
+        next.steps = NAI_MEDIUM_STEPS;
+    } else if (has('steps')) {
+        next.steps = /** @type {any} */ (explicit.steps);
+    }
+
+    // 其余显式键直接覆盖（质量词开关等）
     for (const key of [
-        'steps', 'scale', 'seed', 'image_format',
+        'scale', 'seed', 'image_format',
         'qualityToggle', 'tag_hint_qt', 'n_samples', 'schemaVersion',
     ]) {
         if (has(key)) {

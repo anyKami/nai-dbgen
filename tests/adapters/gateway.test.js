@@ -16,6 +16,8 @@ import { isOk, isErr } from '../../src/infra/result.js';
 import { ERROR_CATEGORY } from '../../src/infra/errors.js';
 import { assertImageGenPort } from '../../src/ports/image-gen.port.js';
 import { assertLlmPort } from '../../src/ports/llm.port.js';
+import { assembleNaiPayload } from '../../src/domain/nai/payload-assembler.js';
+import { defaultNaiParams, emptyNaiCaption } from '../../src/domain/model/nai-params.js';
 
 function naiConfig(overrides = {}) {
     return {
@@ -76,6 +78,41 @@ function stBackendGw(sendRequest, extra = {}) {
 const samplePngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
 describe('createNaiGateway', () => {
+    it('Medium reaches the HTTP transport with the official model id and fixed parameters', async () => {
+        const requests = [];
+        const gateway = createNaiGateway({
+            transports: {
+                direct: createDirectTransport({
+                    fetch: async (url, init) => {
+                        requests.push({ url: String(url), body: JSON.parse(init.body) });
+                        return new Response(JSON.stringify({ images: [{ image: samplePngB64 }] }), { status: 201 });
+                    },
+                }),
+            },
+            decoders: { 'json-base64': { decode: decodeJsonBase64 } },
+        });
+        const caption = emptyNaiCaption();
+        caption.v4_prompt.caption.base_caption = 'landscape';
+        caption.v4_negative_prompt.caption.base_caption = 'CUSTOM_NEGATIVE';
+        const payload = assembleNaiPayload({
+            caption, params: { ...defaultNaiParams(), model: 'nai-diffusion-5-full-medium' },
+            artist: null, replaceCharacterKeywords: false,
+        });
+        const result = await gateway.generate(payload, { config: naiConfig() });
+        assert.equal(result.ok, true);
+        assert.equal(requests.length, 1);
+        assert.equal(requests[0].url, 'https://image.novelai.net/ai/generate-image');
+        const body = requests[0].body;
+        assert.equal(body.model, 'nai-diffusion-5-full-medium');
+        assert.equal(body.action, 'generate');
+        assert.equal(body.parameters.steps, 14);
+        assert.equal(body.parameters.sampler, 'k_euler_ancestral');
+        assert.equal(body.parameters.ucPreset, 0);
+        assert.equal(body.parameters.tag_hint_uc_preset, 1);
+        assert.equal(body.parameters.cfg_rescale, 0);
+        assert.equal(JSON.stringify(body).includes('CUSTOM_NEGATIVE'), false);
+    });
+
     it('assertImageGenPort passes', () => {
         const gw = createNaiGateway({
             transports: {

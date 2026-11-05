@@ -15,6 +15,7 @@ import { FIXED_STRUCTURE } from '../model/nai-params.js';
 import { prefixArtist } from './artist-prefix.js';
 import {
     expandNaiParamFields,
+    isNaiMediumModel,
     officialQualityTags,
     officialUndesiredContent,
     supportsTransparentBackground,
@@ -100,15 +101,17 @@ export function assembleNaiPayload(input) {
     // 4.13：成对字段展开 + Variety 按尺寸计算（参数合法性由 UI / mergeNaiParamsForGenerate 先保证）
     const expanded = expandNaiParamFields({ ...input.params, ...overrides });
     const model = String(expanded.model ?? '');
+    const medium = isNaiMediumModel(model);
     const withQuality = joinPromptParts(posBase, officialQualityTags(expanded.qualityToggle !== false));
     const promptBase = withTransparentBackgroundTag(withQuality, expanded, model);
-    const negativeBase = joinPromptParts(officialUndesiredContent(model, expanded.ucPreset), negBase);
+    // Medium 与官方客户端一致：只保留固定 UC 预设，不发送用户 / 画师串 / 角色负面词。
+    const negativeBase = joinPromptParts(officialUndesiredContent(model, expanded.ucPreset), medium ? '' : negBase);
 
     // 4. 结构开关 + caption
     const posChars = cloneCharCaptions(caption.v4_prompt.caption.char_captions);
     const negChars = pairNegativeCharCaptions(
         posChars,
-        cloneCharCaptions(caption.v4_negative_prompt.caption.char_captions),
+        medium ? [] : cloneCharCaptions(caption.v4_negative_prompt.caption.char_captions),
     );
     const useCoords = posChars.length > 0;
     const v4Prompt = {

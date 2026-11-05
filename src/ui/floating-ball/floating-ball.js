@@ -533,7 +533,7 @@ export function mountFloatingBall(root, deps) {
         });
         const hideToggle = createToggle({
             label: '隐藏悬浮球',
-            hint: '关掉后从快捷回复栏进入',
+            hint: '隐藏后可从扩展程序或快捷回复栏进入',
             checked: readBallHidden(),
             onChange: (on) => {
                 const current = deps.loadSettings();

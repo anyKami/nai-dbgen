@@ -13,6 +13,7 @@ import {
 import { defaultNaiParams, normalizeNaiParams } from '../../domain/model/nai-params.js';
 import {
     NAI_MODEL_OPTIONS,
+    NAI_MEDIUM_STEPS,
     formatNaiModelInput,
     formatNaiModelOption,
     resolveNaiModelInput,
@@ -22,6 +23,7 @@ import {
     coerceNaiParams,
     computeVarietySigma,
     isMultipleOf64,
+    isNaiMediumModel,
     matchSizePresetId,
     noiseSchedulesForModel,
     reconcileParamsForModel,
@@ -80,6 +82,9 @@ export function createNaiParamsForm(initial, opts) {
 
     const noticeEl = el('p', 'nd-nai-params__notice');
     noticeEl.hidden = true;
+
+    const mediumHint = el('p', 'nd-nai-params__hint');
+    setText(mediumHint, `Medium 固定 ${NAI_MEDIUM_STEPS} 步、Euler Ancestral 和严格排除预设，不支持 CFG Rescale。自定义负面词（含画师串与角色负面词）保留在编辑器中，但不参与本次出图；需要排除内容时可在正向提示词里使用负权重。`);
 
     const model = createCombobox({
         label: '模型',
@@ -250,7 +255,7 @@ export function createNaiParamsForm(initial, opts) {
 
     const grid = el('div', 'nd-nai-params__grid');
     grid.append(modelSizeGroup.el, sampleGroup.el, presetGroup.el);
-    root.append(noticeEl, grid);
+    root.append(mediumHint, noticeEl, grid);
 
     applyCapabilityUi(state.model);
     syncSizePresetSelect();
@@ -362,6 +367,12 @@ export function createNaiParamsForm(initial, opts) {
      * @param {string} modelId
      */
     function applyCapabilityUi(modelId) {
+        const medium = isNaiMediumModel(modelId);
+        mediumHint.hidden = !medium;
+        const stepsInput = steps.el.querySelector('input');
+        if (stepsInput) stepsInput.disabled = medium;
+        sampler.setDisabled(medium);
+        ucPreset.setDisabled(medium);
         const showNoise = supportsNoiseScheduleSelect(modelId);
         noise.setDisabled(!showNoise);
         noise.setOptions([...noiseSchedulesForModel(modelId)], noise.getValue());
