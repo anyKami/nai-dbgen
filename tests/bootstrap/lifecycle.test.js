@@ -181,6 +181,35 @@ describe('bootstrap/lifecycle', () => {
         assert.ok(ctx._slashRegistry.includes('naiartist'));
     });
 
+    it('扩展程序的配置按钮打开运行配置弹窗，不依赖悬浮球面板', async () => {
+        fakeDom.document.getElementById = (id) => fakeDom.document.body.querySelector(`#${id}`);
+        const ctx = makeFakeContext();
+        await boot(ctx);
+        const runtime = _runtimeForTest();
+        runtime.floatingBallHandle.destroy();
+        runtime.floatingBallHandle = null;
+        const drawer = fakeDom.document.getElementById('nai-dbgen-settings-drawer');
+        const configButton = Array.from(drawer.querySelectorAll('button'))
+            .find((button) => button.title === '打开数据库生图配置');
+        assert.ok(configButton);
+        toasts.length = 0;
+        const click = configButton._listeners.find((listener) => listener.type === 'click');
+        await click.fn({ preventDefault() {} });
+
+        const panel = fakeDom.document.body.querySelector('.nd-panel--trigger');
+        assert.ok(panel, '应显示完整运行配置页');
+        assert.ok(panel.closest('dialog'), '配置页应在置顶弹窗中');
+        const selectedTab = Array.from(fakeDom.document.body.querySelectorAll('.nd-shell__tab'))
+            .find((tab) => tab.getAttribute('aria-selected') === 'true');
+        assert.equal(selectedTab.dataset.tab, 'trigger');
+        assert.ok(runtime.panelShell);
+        assert.equal(configButton.disabled, false);
+        assert.equal(toasts.some(([level]) => level === 'error' || level === 'warning'), false);
+
+        await dispose();
+        assert.equal(fakeDom.document.body.querySelector('.nd-panel--trigger'), null);
+    });
+
     it('/naiwb wires the shared artist picker and releases it when the dialog closes', async () => {
         const ctx = makeFakeContext();
         await boot(ctx);

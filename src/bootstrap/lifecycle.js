@@ -1474,7 +1474,14 @@ export async function activate(opts = {}) {
                 }
                 return openWorkbenchUi(c);
             },
-            openConfig: openConfigUi,
+            openConfig: () => {
+                const c = liveContainer();
+                if (!c) {
+                    safeToast(null, 'warning', '酒馆数据库生图未成功加载');
+                    return;
+                }
+                return openManagementUi(c, 'trigger');
+            },
             onError: (error) => safeToast(liveContainer()?.host, 'error', formatUserMessage(error)),
         });
         rollback.push(() => {
